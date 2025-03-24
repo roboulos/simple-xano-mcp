@@ -1,0 +1,27 @@
+# Smithery configuration file: https://smithery.ai/docs/deployments
+build:
+  dockerBuildPath: ./  # Build from the current directory
+
+startCommand:
+  type: stdio  # Specifies that this is a standard I/O based MCP server
+  
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP
+    type: object
+    required:
+      - xanoApiToken  # Required configuration parameters
+    properties:
+      xanoApiToken:
+        type: string
+        description: "The Xano API token used to authenticate with the Xano API."
+        
+  commandFunction:
+    # A function that produces the CLI command to start the MCP on stdio
+    |
+    config=>({
+      command: 'python',
+      args: ['xano_mcp_sdk.py'],
+      env: {
+        XANO_API_TOKEN: config.xanoApiToken
+      }
+    })
