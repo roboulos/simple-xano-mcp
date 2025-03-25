@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Xano MCP Server - Simplified version
+Xano MCP Server - Improved version with better error handling and parameter flexibility
 """
 
 import os
 import sys
 import json
 import httpx
-from typing import Dict, List, Any, Optional  # Added missing type imports
+from typing import Dict, List, Any, Union, Optional
 from mcp.server.fastmcp import FastMCP
 
 # Enhanced logging function for better debugging
@@ -104,19 +104,29 @@ async def make_api_request(
             else:
                 log_debug(f"Error response: {response.text[:200]}...")
                 return {
-                    "error": f"API request failed with status {response.status_code}"
+                    "error": f"API request failed with status {response.status_code}",
+                    "details": response.text[:500]
                 }
     except Exception as e:
         log_debug(f"Exception during API request: {str(e)}")
         return {"error": f"Exception during API request: {str(e)}"}
 
 
-# Utility function to ensure IDs are properly formatted as strings
+# Improved utility function to ensure IDs are properly formatted as strings
 def format_id(id_value):
-    """Ensures IDs are properly formatted strings"""
+    """
+    Ensures IDs are properly formatted strings.
+    Handles various input types (int, str, etc.) and converts them to strings.
+    """
     if id_value is None:
         return None
-    return str(id_value).strip('"')
+    
+    # Already a string? Just clean it up
+    if isinstance(id_value, str):
+        return id_value.strip('"').strip("'")
+    
+    # Convert numbers or other types to string
+    return str(id_value)
 
 
 ##############################################
@@ -126,7 +136,18 @@ def format_id(id_value):
 
 @mcp.tool()
 async def xano_list_instances() -> Dict[str, Any]:
-    """List all Xano instances associated with the account."""
+    """
+    List all Xano instances associated with the account.
+    
+    Returns:
+        A dictionary containing a list of Xano instances under the 'instances' key.
+        
+    Example:
+        ```
+        result = await xano_list_instances()
+        # Returns: {"instances": [{"name": "instance-name", ...}]}
+        ```
+    """
     log_debug("Called xano_list_instances()")
     token = get_token()
     headers = {
@@ -160,10 +181,20 @@ async def xano_list_instances() -> Dict[str, Any]:
 
 @mcp.tool()
 async def xano_get_instance_details(instance_name: str) -> Dict[str, Any]:
-    """Get details for a specific Xano instance.
+    """
+    Get details for a specific Xano instance.
 
     Args:
-        instance_name: The name of the Xano instance
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        
+    Returns:
+        A dictionary containing details about the specified Xano instance.
+        
+    Example:
+        ```
+        result = await xano_get_instance_details("xnwv-v1z6-dvnr")
+        # Returns instance details as a dictionary
+        ```
     """
     log_debug(f"Called xano_get_instance_details(instance_name={instance_name})")
     # Construct the instance details without making an API call
@@ -180,10 +211,20 @@ async def xano_get_instance_details(instance_name: str) -> Dict[str, Any]:
 
 @mcp.tool()
 async def xano_list_databases(instance_name: str) -> Dict[str, Any]:
-    """List all databases (workspaces) in a specific Xano instance.
+    """
+    List all databases (workspaces) in a specific Xano instance.
 
     Args:
-        instance_name: The name of the Xano instance
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        
+    Returns:
+        A dictionary containing a list of databases/workspaces under the 'databases' key.
+        
+    Example:
+        ```
+        result = await xano_list_databases("xnwv-v1z6-dvnr")
+        # Returns: {"databases": [{"id": "123", "name": "MyDatabase", ...}]}
+        ```
     """
     log_debug(f"Called xano_list_databases(instance_name={instance_name})")
     token = get_token()
@@ -211,13 +252,24 @@ async def xano_list_databases(instance_name: str) -> Dict[str, Any]:
 
 @mcp.tool()
 async def xano_get_workspace_details(
-    instance_name: str, workspace_id: str
+    instance_name: str, workspace_id: Union[str, int]
 ) -> Dict[str, Any]:
-    """Get details for a specific Xano workspace.
+    """
+    Get details for a specific Xano workspace.
 
     Args:
-        instance_name: The name of the Xano instance
-        workspace_id: The ID of the workspace
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing details about the specified workspace.
+        
+    Example:
+        ```
+        # Both of these will work:
+        result = await xano_get_workspace_details("xnwv-v1z6-dvnr", "5")
+        result = await xano_get_workspace_details("xnwv-v1z6-dvnr", 5)
+        ```
     """
     log_debug(f"Called xano_get_workspace_details(instance_name={instance_name}, workspace_id={workspace_id})")
     token = get_token()
@@ -230,7 +282,9 @@ async def xano_get_workspace_details(
     instance_domain = f"{instance_name}.n7c.xano.io"
     meta_api = f"https://{instance_domain}/api:meta"
 
+    # Format the workspace_id to ensure it's a proper string
     workspace_id = format_id(workspace_id)
+    log_debug(f"Formatted workspace_id: {workspace_id}")
 
     url = f"{meta_api}/workspace/{workspace_id}"
     log_debug(f"Requesting workspace details from URL: {url}")
@@ -243,14 +297,27 @@ async def xano_get_workspace_details(
 
 
 @mcp.tool()
-async def xano_list_tables(instance_name: str, database_name: str) -> Dict[str, Any]:
-    """List all tables in a specific Xano database (workspace).
+async def xano_list_tables(
+    instance_name: str, database_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    List all tables in a specific Xano database (workspace).
 
     Args:
-        instance_name: The name of the Xano instance
-        database_name: The ID of the Xano workspace (database)
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        database_id: The ID of the Xano workspace/database (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing a list of tables under the 'tables' key.
+        
+    Example:
+        ```
+        # Both of these will work:
+        result = await xano_list_tables("xnwv-v1z6-dvnr", "5")
+        result = await xano_list_tables("xnwv-v1z6-dvnr", 5)
+        ```
     """
-    log_debug(f"Called xano_list_tables(instance_name={instance_name}, database_name={database_name})")
+    log_debug(f"Called xano_list_tables(instance_name={instance_name}, database_id={database_id})")
     token = get_token()
     headers = {
         "Authorization": f"Bearer {token}",
@@ -261,8 +328,9 @@ async def xano_list_tables(instance_name: str, database_name: str) -> Dict[str, 
     instance_domain = f"{instance_name}.n7c.xano.io"
     meta_api = f"https://{instance_domain}/api:meta"
 
-    # Use the workspace ID (database_name) to list tables
-    workspace_id = format_id(database_name)
+    # Format the database_id to ensure it's a proper string
+    workspace_id = format_id(database_id)
+    log_debug(f"Formatted database_id: {workspace_id}")
 
     # List tables in the workspace
     url = f"{meta_api}/workspace/{workspace_id}/table"
@@ -282,21 +350,28 @@ async def xano_list_tables(instance_name: str, database_name: str) -> Dict[str, 
         return {"tables": result}
 
 
-# ... [Rest of the code follows the same pattern - add logging to each function] ...
-
-# Only adding a few more for brevity - in the real implementation, 
-# you would continue adding logging to all functions
-
 @mcp.tool()
 async def xano_get_table_details(
-    instance_name: str, workspace_id: str, table_id: str
+    instance_name: str, workspace_id: Union[str, int], table_id: Union[str, int]
 ) -> Dict[str, Any]:
-    """Get details for a specific Xano table.
+    """
+    Get details for a specific Xano table.
 
     Args:
-        instance_name: The name of the Xano instance
-        workspace_id: The ID of the workspace
-        table_id: The ID of the table
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        table_id: The ID of the table (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing details about the specified table.
+        
+    Example:
+        ```
+        # All of these formats will work:
+        result = await xano_get_table_details("xnwv-v1z6-dvnr", "5", "10")
+        result = await xano_get_table_details("xnwv-v1z6-dvnr", 5, 10)
+        result = await xano_get_table_details("xnwv-v1z6-dvnr", "5", 10)
+        ```
     """
     log_debug(f"Called xano_get_table_details(instance_name={instance_name}, workspace_id={workspace_id}, table_id={table_id})")
     token = get_token()
@@ -309,15 +384,297 @@ async def xano_get_table_details(
     instance_domain = f"{instance_name}.n7c.xano.io"
     meta_api = f"https://{instance_domain}/api:meta"
 
+    # Format IDs to ensure they're proper strings
     workspace_id = format_id(workspace_id)
     table_id = format_id(table_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, table_id: {table_id}")
 
     url = f"{meta_api}/workspace/{workspace_id}/table/{table_id}"
     log_debug(f"Requesting table details from URL: {url}")
     return await make_api_request(url, headers)
 
 
-# ... [More functions with logging added] ...
+@mcp.tool()
+async def xano_create_table(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    name: str,
+    description: str = "",
+    docs: str = "",
+    auth: bool = False,
+    tag: List[str] = None,
+) -> Dict[str, Any]:
+    """
+    Create a new table in a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        name: The name of the new table
+        description: Table description
+        docs: Documentation text
+        auth: Whether authentication is required
+        tag: List of tags for the table
+        
+    Returns:
+        A dictionary containing details about the newly created table.
+        
+    Example:
+        ```
+        result = await xano_create_table("xnwv-v1z6-dvnr", 5, "Users", 
+                                        description="Stores user information")
+        ```
+    """
+    log_debug(f"Called xano_create_table(instance_name={instance_name}, workspace_id={workspace_id}, name={name})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format the workspace_id to ensure it's a proper string
+    workspace_id = format_id(workspace_id)
+    log_debug(f"Formatted workspace_id: {workspace_id}")
+
+    # Prepare the table creation data
+    data = {"name": name, "description": description, "docs": docs, "auth": auth}
+
+    if tag:
+        data["tag"] = tag
+
+    url = f"{meta_api}/workspace/{workspace_id}/table"
+    log_debug(f"Creating table at URL: {url}")
+    return await make_api_request(url, headers, method="POST", data=data)
+
+
+@mcp.tool()
+async def xano_update_table(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    table_id: Union[str, int],
+    name: str = None,
+    description: str = None,
+    docs: str = None,
+    auth: bool = None,
+    tag: List[str] = None,
+) -> Dict[str, Any]:
+    """
+    Update an existing table in a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        table_id: The ID of the table to update (can be provided as string or number)
+        name: The new name of the table
+        description: New table description
+        docs: New documentation text
+        auth: New authentication setting
+        tag: New list of tags for the table
+        
+    Returns:
+        A dictionary containing details about the updated table.
+        
+    Example:
+        ```
+        # Both formats work:
+        result = await xano_update_table("xnwv-v1z6-dvnr", 5, 10, name="NewTableName")
+        result = await xano_update_table("xnwv-v1z6-dvnr", "5", "10", description="Updated description")
+        ```
+    """
+    log_debug(f"Called xano_update_table(instance_name={instance_name}, workspace_id={workspace_id}, table_id={table_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    table_id = format_id(table_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, table_id: {table_id}")
+
+    # Build the update data, only including fields that are provided
+    data = {}
+    if name is not None:
+        data["name"] = name
+    if description is not None:
+        data["description"] = description
+    if docs is not None:
+        data["docs"] = docs
+    if auth is not None:
+        data["auth"] = auth
+    if tag is not None:
+        data["tag"] = tag
+
+    url = f"{meta_api}/workspace/{workspace_id}/table/{table_id}/meta"
+    log_debug(f"Updating table at URL: {url}")
+    return await make_api_request(url, headers, method="PUT", data=data)
+
+
+@mcp.tool()
+async def xano_delete_table(
+    instance_name: str, workspace_id: Union[str, int], table_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    Delete a table from a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        table_id: The ID of the table to delete (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing the result of the delete operation.
+        
+    Example:
+        ```
+        # Both formats work:
+        result = await xano_delete_table("xnwv-v1z6-dvnr", 5, 10)
+        result = await xano_delete_table("xnwv-v1z6-dvnr", "5", "10")
+        ```
+    """
+    log_debug(f"Called xano_delete_table(instance_name={instance_name}, workspace_id={workspace_id}, table_id={table_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    table_id = format_id(table_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, table_id: {table_id}")
+
+    url = f"{meta_api}/workspace/{workspace_id}/table/{table_id}"
+    log_debug(f"Deleting table at URL: {url}")
+    return await make_api_request(url, headers, method="DELETE")
+
+
+##############################################
+# SECTION: TABLE SCHEMA OPERATIONS
+##############################################
+
+
+@mcp.tool()
+async def xano_get_table_schema(
+    instance_name: str, workspace_id: Union[str, int], table_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    Get schema for a specific Xano table.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        table_id: The ID of the table (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing the schema of the specified table under the 'schema' key.
+        
+    Example:
+        ```
+        # Both formats work:
+        result = await xano_get_table_schema("xnwv-v1z6-dvnr", 5, 10)
+        result = await xano_get_table_schema("xnwv-v1z6-dvnr", "5", "10")
+        ```
+    """
+    log_debug(f"Called xano_get_table_schema(instance_name={instance_name}, workspace_id={workspace_id}, table_id={table_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    table_id = format_id(table_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, table_id: {table_id}")
+
+    url = f"{meta_api}/workspace/{workspace_id}/table/{table_id}/schema"
+    log_debug(f"Requesting table schema from URL: {url}")
+    result = await make_api_request(url, headers)
+
+    if "error" in result:
+        return result
+
+    return {"schema": result}
+
+# ... More functions would follow the same pattern ...
+
+# Adding one more example function, and the rest would follow the same improvements
+
+@mcp.tool()
+async def xano_browse_table_content(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    table_id: Union[str, int],
+    page: int = 1,
+    per_page: int = 50,
+) -> Dict[str, Any]:
+    """
+    Browse content for a specific Xano table.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        table_id: The ID of the table (can be provided as string or number)
+        page: Page number (default: 1)
+        per_page: Number of records per page (default: 50)
+        
+    Returns:
+        A dictionary containing the table content with pagination.
+        
+    Example:
+        ```
+        # Any of these formats will work:
+        result = await xano_browse_table_content("xnwv-v1z6-dvnr", 5, 10)
+        result = await xano_browse_table_content("xnwv-v1z6-dvnr", "5", "10", page=2)
+        ```
+    """
+    log_debug(f"Called xano_browse_table_content(instance_name={instance_name}, workspace_id={workspace_id}, table_id={table_id}, page={page}, per_page={per_page})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-Data-Source": "live",  # As per Swagger docs
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    table_id = format_id(table_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, table_id: {table_id}")
+
+    # Prepare params for pagination
+    params = {"page": page, "per_page": per_page}
+
+    url = f"{meta_api}/workspace/{workspace_id}/table/{table_id}/content"
+    log_debug(f"Browsing table content from URL: {url}")
+    return await make_api_request(url, headers, params=params)
+
 
 if __name__ == "__main__":
     log_debug("Starting Xano MCP server using MCP SDK...")
