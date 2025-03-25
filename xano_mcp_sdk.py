@@ -1768,37 +1768,24 @@ async def xano_list_files(
 
     Args:
         instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
-            workspace_id: Union[str, int],
-            page: int = 1,
-            per_page: int = 50,
-            search: str = None,
-            access: str = None,
-            sort: str = None,
-            order: str = "desc",
-        ) -> Dict[str, Any]:
-            """
-    List files within a workspace.
-
-        Args:
-            instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
-            workspace_id: The ID of the workspace (can be provided as string or number)
-            page: Page number (default: 1)
-            per_page: Number of files per page (default: 50)
-            search: Search term for filtering files
-            access: Filter by access level ("public" or "private")
-            sort: Field to sort by ("created_at", "name", "size", "mime")
-            order: Sort order ("asc" or "desc")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        page: Page number (default: 1)
+        per_page: Number of files per page (default: 50)
+        search: Search term for filtering files
+        access: Filter by access level ("public" or "private")
+        sort: Field to sort by ("created_at", "name", "size", "mime")
+        order: Sort order ("asc" or "desc")
         
-        Returns:
-            A dictionary containing a list of files and pagination information
+    Returns:
+        A dictionary containing a list of files and pagination information
             
-        Example:
-            ```
-            # List all files in a workspace
-            result = await xano_list_files("xnwv-v1z6-dvnr", 5)
+    Example:
+        ```
+        # List all files in a workspace
+        result = await xano_list_files("xnwv-v1z6-dvnr", 5)
             
-            # List files with filtering and sorting
-            result = await xano_list_files(
+        # List files with filtering and sorting
+        result = await xano_list_files(
                 "xnwv-v1z6-dvnr", "5",
                 search="report",
                 access="public",
@@ -1809,186 +1796,186 @@ async def xano_list_files(
             )
             ```
         """
-        log_debug(f"Called xano_list_files(instance_name={instance_name}, workspace_id={workspace_id}, page={page}, per_page={per_page})")
-        token = get_token()
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
+    log_debug(f"Called xano_list_files(instance_name={instance_name}, workspace_id={workspace_id}, page={page}, per_page={per_page})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    log_debug(f"Formatted workspace_id: {workspace_id}")
+
+    # Prepare params
+    params = {"page": page, "per_page": per_page}
+
+    if search:
+        params["search"] = search
+
+    if access:
+        params["access"] = access
+
+    if sort:
+        params["sort"] = sort
+        params["order"] = order
+
+    url = f"{meta_api}/workspace/{workspace_id}/file"
+    log_debug(f"Listing files from URL: {url}")
+    return await make_api_request(url, headers, params=params)
     
-        instance_domain = f"{instance_name}.n7c.xano.io"
-        meta_api = f"https://{instance_domain}/api:meta"
     
-        # Format IDs to ensure they're proper strings
-        workspace_id = format_id(workspace_id)
-        log_debug(f"Formatted workspace_id: {workspace_id}")
-    
-        # Prepare params
-        params = {"page": page, "per_page": per_page}
-    
-        if search:
-            params["search"] = search
-    
-        if access:
-            params["access"] = access
-    
-        if sort:
-            params["sort"] = sort
-            params["order"] = order
-    
-        url = f"{meta_api}/workspace/{workspace_id}/file"
-        log_debug(f"Listing files from URL: {url}")
-        return await make_api_request(url, headers, params=params)
-    
-    
-    @mcp.tool()
-    async def xano_get_file_details(
-        instance_name: str, 
-        workspace_id: Union[str, int], 
-        file_id: Union[str, int]
-    ) -> Dict[str, Any]:
-        """
-        Get details for a specific file.
-    
-        Args:
-            instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
-            workspace_id: The ID of the workspace (can be provided as string or number)
-            file_id: The ID of the file (can be provided as string or number)
-            
-        Returns:
-            A dictionary containing details about the specified file
-            
-        Example:
-            ```
-            # Both formats work:
-            result = await xano_get_file_details("xnwv-v1z6-dvnr", 5, 10)
-            result = await xano_get_file_details("xnwv-v1z6-dvnr", "5", "10")
-            ```
-        """
-        log_debug(f"Called xano_get_file_details(instance_name={instance_name}, workspace_id={workspace_id}, file_id={file_id})")
-        token = get_token()
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-    
-        instance_domain = f"{instance_name}.n7c.xano.io"
-        meta_api = f"https://{instance_domain}/api:meta"
-    
-        # Format IDs to ensure they're proper strings
-        workspace_id = format_id(workspace_id)
-        file_id = format_id(file_id)
+@mcp.tool()
+async def xano_get_file_details(
+    instance_name: str, 
+    workspace_id: Union[str, int], 
+    file_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    Get details for a specific file.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        file_id: The ID of the file (can be provided as string or number)
         
-        log_debug(f"Formatted workspace_id: {workspace_id}, file_id: {file_id}")
-    
-        url = f"{meta_api}/workspace/{workspace_id}/file/{file_id}"
-        log_debug(f"Getting file details from URL: {url}")
-        return await make_api_request(url, headers)
-    
-    
-    @mcp.tool()
-    async def xano_delete_file(
-        instance_name: str, 
-        workspace_id: Union[str, int], 
-        file_id: Union[str, int]
-    ) -> Dict[str, Any]:
-        """
-        Delete a file from a workspace.
-    
-        Args:
-            instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
-            workspace_id: The ID of the workspace (can be provided as string or number)
-            file_id: The ID of the file to delete (can be provided as string or number)
-            
-        Returns:
-            A dictionary containing the result of the delete operation
-            
-        Example:
-            ```
-            # Both formats work:
-            result = await xano_delete_file("xnwv-v1z6-dvnr", 5, 10)
-            result = await xano_delete_file("xnwv-v1z6-dvnr", "5", "10")
-            ```
-        """
-        log_debug(f"Called xano_delete_file(instance_name={instance_name}, workspace_id={workspace_id}, file_id={file_id})")
-        token = get_token()
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-    
-        instance_domain = f"{instance_name}.n7c.xano.io"
-        meta_api = f"https://{instance_domain}/api:meta"
-    
-        # Format IDs to ensure they're proper strings
-        workspace_id = format_id(workspace_id)
-        file_id = format_id(file_id)
+    Returns:
+        A dictionary containing details about the specified file
         
-        log_debug(f"Formatted workspace_id: {workspace_id}, file_id: {file_id}")
+    Example:
+        ```
+        # Both formats work:
+        result = await xano_get_file_details("xnwv-v1z6-dvnr", 5, 10)
+        result = await xano_get_file_details("xnwv-v1z6-dvnr", "5", "10")
+        ```
+    """
+    log_debug(f"Called xano_get_file_details(instance_name={instance_name}, workspace_id={workspace_id}, file_id={file_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    file_id = format_id(file_id)
     
-        url = f"{meta_api}/workspace/{workspace_id}/file/{file_id}"
-        log_debug(f"Deleting file at URL: {url}")
-        return await make_api_request(url, headers, method="DELETE")
+    log_debug(f"Formatted workspace_id: {workspace_id}, file_id: {file_id}")
+
+    url = f"{meta_api}/workspace/{workspace_id}/file/{file_id}"
+    log_debug(f"Getting file details from URL: {url}")
+    return await make_api_request(url, headers)
     
     
-    @mcp.tool()
-    async def xano_bulk_delete_files(
-        instance_name: str, 
-        workspace_id: Union[str, int], 
-        file_ids: List[Union[str, int]]
-    ) -> Dict[str, Any]:
-        """
-        Delete multiple files from a workspace in a single operation.
-    
-        Args:
-            instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
-            workspace_id: The ID of the workspace (can be provided as string or number)
-            file_ids: List of file IDs to delete (can be provided as strings or numbers)
-            
-        Returns:
-            A dictionary containing the result of the bulk delete operation
-            
-        Example:
-            ```
-            # Delete multiple files at once
-            result = await xano_bulk_delete_files(
-                "xnwv-v1z6-dvnr", 5, 
-                file_ids=[10, 11, 12]
-            )
-            
-            # Also works with string IDs
-            result = await xano_bulk_delete_files(
-                "xnwv-v1z6-dvnr", "5", 
-                file_ids=["10", "11", "12"]
-            )
-            ```
-        """
-        log_debug(f"Called xano_bulk_delete_files(instance_name={instance_name}, workspace_id={workspace_id}, file_ids_count={len(file_ids)})")
-        token = get_token()
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-    
-        instance_domain = f"{instance_name}.n7c.xano.io"
-        meta_api = f"https://{instance_domain}/api:meta"
-    
-        # Format IDs to ensure they're proper strings
-        workspace_id = format_id(workspace_id)
-        formatted_file_ids = [format_id(file_id) for file_id in file_ids]
+@mcp.tool()
+async def xano_delete_file(
+    instance_name: str, 
+    workspace_id: Union[str, int], 
+    file_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    Delete a file from a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        file_id: The ID of the file to delete (can be provided as string or number)
         
-        log_debug(f"Formatted workspace_id: {workspace_id}")
+    Returns:
+        A dictionary containing the result of the delete operation
+        
+    Example:
+        ```
+        # Both formats work:
+        result = await xano_delete_file("xnwv-v1z6-dvnr", 5, 10)
+        result = await xano_delete_file("xnwv-v1z6-dvnr", "5", "10")
+        ```
+    """
+    log_debug(f"Called xano_delete_file(instance_name={instance_name}, workspace_id={workspace_id}, file_id={file_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    file_id = format_id(file_id)
     
-        # Prepare the bulk delete data
-        data = {"ids": formatted_file_ids}
+    log_debug(f"Formatted workspace_id: {workspace_id}, file_id: {file_id}")
+
+    url = f"{meta_api}/workspace/{workspace_id}/file/{file_id}"
+    log_debug(f"Deleting file at URL: {url}")
+    return await make_api_request(url, headers, method="DELETE")
     
-        url = f"{meta_api}/workspace/{workspace_id}/file/bulk_delete"
-        log_debug(f"Bulk deleting files at URL: {url}")
-        return await make_api_request(url, headers, method="DELETE", data=data)
+    
+@mcp.tool()
+async def xano_bulk_delete_files(
+    instance_name: str, 
+    workspace_id: Union[str, int], 
+    file_ids: List[Union[str, int]]
+) -> Dict[str, Any]:
+    """
+    Delete multiple files from a workspace in a single operation.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        file_ids: List of file IDs to delete (can be provided as strings or numbers)
+        
+    Returns:
+        A dictionary containing the result of the bulk delete operation
+        
+    Example:
+        ```
+        # Delete multiple files at once
+        result = await xano_bulk_delete_files(
+            "xnwv-v1z6-dvnr", 5, 
+            file_ids=[10, 11, 12]
+        )
+        
+        # Also works with string IDs
+        result = await xano_bulk_delete_files(
+            "xnwv-v1z6-dvnr", "5", 
+            file_ids=["10", "11", "12"]
+        )
+        ```
+    """
+    log_debug(f"Called xano_bulk_delete_files(instance_name={instance_name}, workspace_id={workspace_id}, file_ids_count={len(file_ids)})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    formatted_file_ids = [format_id(file_id) for file_id in file_ids]
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}")
+
+    # Prepare the bulk delete data
+    data = {"ids": formatted_file_ids}
+
+    url = f"{meta_api}/workspace/{workspace_id}/file/bulk_delete"
+    log_debug(f"Bulk deleting files at URL: {url}")
+    return await make_api_request(url, headers, method="DELETE", data=data)
     
     
     ##############################################
@@ -1996,89 +1983,89 @@ async def xano_list_files(
     ##############################################
     
     
-    @mcp.tool()
-    async def xano_browse_request_history(
-        instance_name: str,
-        workspace_id: Union[str, int],
-        page: int = 1,
-        per_page: int = 50,
-        branch: str = None,
-        api_id: Union[str, int] = None,
-        query_id: Union[str, int] = None,
-        include_output: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        Browse request history for a workspace.
-    
-        Args:
-            instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
-            workspace_id: The ID of the workspace (can be provided as string or number)
-            page: Page number (default: 1)
-            per_page: Number of results per page (default: 50)
-            branch: Filter by branch
-            api_id: Filter by API ID (can be provided as string or number)
-            query_id: Filter by query ID (can be provided as string or number)
-            include_output: Whether to include response output
-            
-        Returns:
-            A dictionary containing request history entries and pagination information
-            
-        Example:
-            ```
-            # Get recent request history
-            result = await xano_browse_request_history("xnwv-v1z6-dvnr", 5)
-            
-            # Get filtered request history with response output
-            result = await xano_browse_request_history(
-                "xnwv-v1z6-dvnr", "5",
-                branch="main",
-                api_id=10,
-                include_output=True,
-                page=2,
-                per_page=25
-            )
-            ```
-        """
-        log_debug(f"Called xano_browse_request_history(instance_name={instance_name}, workspace_id={workspace_id}, page={page}, per_page={per_page})")
-        token = get_token()
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-    
-        instance_domain = f"{instance_name}.n7c.xano.io"
-        meta_api = f"https://{instance_domain}/api:meta"
-    
-        # Format IDs to ensure they're proper strings
-        workspace_id = format_id(workspace_id)
+@mcp.tool()
+async def xano_browse_request_history(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    page: int = 1,
+    per_page: int = 50,
+    branch: str = None,
+    api_id: Union[str, int] = None,
+    query_id: Union[str, int] = None,
+    include_output: bool = False,
+) -> Dict[str, Any]:
+    """
+    Browse request history for a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        page: Page number (default: 1)
+        per_page: Number of results per page (default: 50)
+        branch: Filter by branch
+        api_id: Filter by API ID (can be provided as string or number)
+        query_id: Filter by query ID (can be provided as string or number)
+        include_output: Whether to include response output
         
-        log_debug(f"Formatted workspace_id: {workspace_id}")
+    Returns:
+        A dictionary containing request history entries and pagination information
+        
+    Example:
+        ```
+        # Get recent request history
+        result = await xano_browse_request_history("xnwv-v1z6-dvnr", 5)
+        
+        # Get filtered request history with response output
+        result = await xano_browse_request_history(
+            "xnwv-v1z6-dvnr", "5",
+            branch="main",
+            api_id=10,
+            include_output=True,
+            page=2,
+            per_page=25
+        )
+        ```
+    """
+    log_debug(f"Called xano_browse_request_history(instance_name={instance_name}, workspace_id={workspace_id}, page={page}, per_page={per_page})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
     
-        # Format optional ID parameters if provided
-        if api_id is not None:
-            api_id = format_id(api_id)
-        if query_id is not None:
-            query_id = format_id(query_id)
-    
-        # Prepare params
-        params = {"page": page, "per_page": per_page}
-    
-        if branch:
-            params["branch"] = branch
-    
-        if api_id:
-            params["api_id"] = api_id
-    
-        if query_id:
-            params["query_id"] = query_id
-    
-        if include_output:
-            params["include_output"] = str(include_output).lower()
-    
-        url = f"{meta_api}/workspace/{workspace_id}/request_history"
-        log_debug(f"Browsing request history from URL: {url}")
-        return await make_api_request(url, headers, params=params)
+    log_debug(f"Formatted workspace_id: {workspace_id}")
+
+    # Format optional ID parameters if provided
+    if api_id is not None:
+        api_id = format_id(api_id)
+    if query_id is not None:
+        query_id = format_id(query_id)
+
+    # Prepare params
+    params = {"page": page, "per_page": per_page}
+
+    if branch:
+        params["branch"] = branch
+
+    if api_id:
+        params["api_id"] = api_id
+
+    if query_id:
+        params["query_id"] = query_id
+
+    if include_output:
+        params["include_output"] = str(include_output).lower()
+
+    url = f"{meta_api}/workspace/{workspace_id}/request_history"
+    log_debug(f"Browsing request history from URL: {url}")
+    return await make_api_request(url, headers, params=params)
     
     
     ##############################################
@@ -2086,122 +2073,122 @@ async def xano_list_files(
     ##############################################
     
     
-    @mcp.tool()
-    async def xano_export_workspace(
-        instance_name: str, 
-        workspace_id: Union[str, int], 
-        branch: str = None, 
-        password: str = None
-    ) -> Dict[str, Any]:
-        """
-        Export a workspace to a file.
+@mcp.tool()
+async def xano_export_workspace(
+    instance_name: str, 
+    workspace_id: Union[str, int], 
+    branch: str = None, 
+    password: str = None
+) -> Dict[str, Any]:
+    """
+    Export a workspace to a file.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace to export (can be provided as string or number)
+        branch: Branch to export (defaults to live branch if not specified)
+        password: Password to encrypt the export (optional)
+        
+    Returns:
+        A dictionary containing export information, including a download URL
+        
+    Example:
+        ```
+        # Export the live branch
+        result = await xano_export_workspace("xnwv-v1z6-dvnr", 5)
+        
+        # Export a specific branch with password protection
+        result = await xano_export_workspace(
+            "xnwv-v1z6-dvnr", "5",
+            branch="development",
+            password="secure_password"
+        )
+        ```
+    """
+    log_debug(f"Called xano_export_workspace(instance_name={instance_name}, workspace_id={workspace_id}, branch={branch})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format the workspace_id to ensure it's a proper string
+    workspace_id = format_id(workspace_id)
+    log_debug(f"Formatted workspace_id: {workspace_id}")
+
+    # Prepare export data
+    data = {}
+    if branch:
+        data["branch"] = branch
+    if password:
+        data["password"] = password
+
+    url = f"{meta_api}/workspace/{workspace_id}/export"
+    log_debug(f"Exporting workspace from URL: {url}")
+    return await make_api_request(url, headers, method="POST", data=data)
     
-        Args:
-            instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
-            workspace_id: The ID of the workspace to export (can be provided as string or number)
-            branch: Branch to export (defaults to live branch if not specified)
-            password: Password to encrypt the export (optional)
-            
-        Returns:
-            A dictionary containing export information, including a download URL
-            
-        Example:
-            ```
-            # Export the live branch
-            result = await xano_export_workspace("xnwv-v1z6-dvnr", 5)
-            
-            # Export a specific branch with password protection
-            result = await xano_export_workspace(
-                "xnwv-v1z6-dvnr", "5",
-                branch="development",
-                password="secure_password"
-            )
-            ```
-        """
-        log_debug(f"Called xano_export_workspace(instance_name={instance_name}, workspace_id={workspace_id}, branch={branch})")
-        token = get_token()
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
     
-        instance_domain = f"{instance_name}.n7c.xano.io"
-        meta_api = f"https://{instance_domain}/api:meta"
-    
-        # Format the workspace_id to ensure it's a proper string
-        workspace_id = format_id(workspace_id)
-        log_debug(f"Formatted workspace_id: {workspace_id}")
-    
-        # Prepare export data
-        data = {}
-        if branch:
-            data["branch"] = branch
-        if password:
-            data["password"] = password
-    
-        url = f"{meta_api}/workspace/{workspace_id}/export"
-        log_debug(f"Exporting workspace from URL: {url}")
-        return await make_api_request(url, headers, method="POST", data=data)
-    
-    
-    @mcp.tool()
-    async def xano_export_workspace_schema(
-        instance_name: str, 
-        workspace_id: Union[str, int], 
-        branch: str = None, 
-        password: str = None
-    ) -> Dict[str, Any]:
-        """
-        Export only the schema of a workspace to a file.
-    
-        Args:
-            instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
-            workspace_id: The ID of the workspace (can be provided as string or number)
-            branch: Branch to export (defaults to live branch if not specified)
-            password: Password to encrypt the export (optional)
-            
-        Returns:
-            A dictionary containing export information, including a download URL
-            
-        Example:
-            ```
-            # Export only the schema of the live branch
-            result = await xano_export_workspace_schema("xnwv-v1z6-dvnr", 5)
-            
-            # Export the schema of a specific branch with password protection
-            result = await xano_export_workspace_schema(
-                "xnwv-v1z6-dvnr", "5",
-                branch="development",
-                password="secure_password"
-            )
-            ```
-        """
-        log_debug(f"Called xano_export_workspace_schema(instance_name={instance_name}, workspace_id={workspace_id}, branch={branch})")
-        token = get_token()
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-    
-        instance_domain = f"{instance_name}.n7c.xano.io"
-        meta_api = f"https://{instance_domain}/api:meta"
-    
-        # Format the workspace_id to ensure it's a proper string
-        workspace_id = format_id(workspace_id)
-        log_debug(f"Formatted workspace_id: {workspace_id}")
-    
-        # Prepare export data
-        data = {}
-        if branch:
-            data["branch"] = branch
-        if password:
-            data["password"] = password
-    
-        url = f"{meta_api}/workspace/{workspace_id}/export-schema"
-        log_debug(f"Exporting workspace schema from URL: {url}")
-        return await make_api_request(url, headers, method="POST", data=data)
+@mcp.tool()
+async def xano_export_workspace_schema(
+    instance_name: str, 
+    workspace_id: Union[str, int], 
+    branch: str = None, 
+    password: str = None
+) -> Dict[str, Any]:
+    """
+    Export only the schema of a workspace to a file.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        branch: Branch to export (defaults to live branch if not specified)
+        password: Password to encrypt the export (optional)
+        
+    Returns:
+        A dictionary containing export information, including a download URL
+        
+    Example:
+        ```
+        # Export only the schema of the live branch
+        result = await xano_export_workspace_schema("xnwv-v1z6-dvnr", 5)
+        
+        # Export the schema of a specific branch with password protection
+        result = await xano_export_workspace_schema(
+            "xnwv-v1z6-dvnr", "5",
+            branch="development",
+            password="secure_password"
+        )
+        ```
+    """
+    log_debug(f"Called xano_export_workspace_schema(instance_name={instance_name}, workspace_id={workspace_id}, branch={branch})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format the workspace_id to ensure it's a proper string
+    workspace_id = format_id(workspace_id)
+    log_debug(f"Formatted workspace_id: {workspace_id}")
+
+    # Prepare export data
+    data = {}
+    if branch:
+        data["branch"] = branch
+    if password:
+        data["password"] = password
+
+    url = f"{meta_api}/workspace/{workspace_id}/export-schema"
+    log_debug(f"Exporting workspace schema from URL: {url}")
+    return await make_api_request(url, headers, method="POST", data=data)
 
 if __name__ == "__main__":
     log_debug("Starting Xano MCP server using MCP SDK...")
