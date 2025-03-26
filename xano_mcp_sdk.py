@@ -2190,6 +2190,797 @@ async def xano_export_workspace_schema(
     log_debug(f"Exporting workspace schema from URL: {url}")
     return await make_api_request(url, headers, method="POST", data=data)
 
+##############################################
+# SECTION: API GROUP OPERATIONS
+##############################################
+
+
+@mcp.tool()
+async def xano_browse_api_groups(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    branch: str = None,
+    page: int = 1,
+    per_page: int = 50,
+    search: str = None,
+    sort: str = None,
+    order: str = "desc"
+) -> Dict[str, Any]:
+    """
+    Browse API groups in a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        branch: Filter by branch name
+        page: Page number (default: 1)
+        per_page: Number of results per page (default: 50)
+        search: Search term for filtering API groups
+        sort: Field to sort by ("created_at", "updated_at", "name")
+        order: Sort order ("asc" or "desc")
+        
+    Returns:
+        A dictionary containing a list of API groups and pagination information
+        
+    Example:
+        ```
+        # List all API groups in a workspace
+        result = await xano_browse_api_groups("xnwv-v1z6-dvnr", 5)
+        
+        # Search for API groups with pagination and sorting
+        result = await xano_browse_api_groups(
+            "xnwv-v1z6-dvnr", "5",
+            search="auth",
+            sort="name",
+            order="asc",
+            page=2,
+            per_page=25
+        )
+        ```
+    """
+    log_debug(f"Called xano_browse_api_groups(instance_name={instance_name}, workspace_id={workspace_id}, page={page}, per_page={per_page})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    log_debug(f"Formatted workspace_id: {workspace_id}")
+
+    # Prepare params
+    params = {"page": page, "per_page": per_page}
+
+    if branch:
+        params["branch"] = branch
+    
+    if search:
+        params["search"] = search
+    
+    if sort:
+        params["sort"] = sort
+        params["order"] = order
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup"
+    log_debug(f"Browsing API groups from URL: {url}")
+    return await make_api_request(url, headers, params=params)
+
+
+@mcp.tool()
+async def xano_get_api_group(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    Get details for a specific API group.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing details about the specified API group
+        
+    Example:
+        ```
+        # Both formats work:
+        result = await xano_get_api_group("xnwv-v1z6-dvnr", 5, 10)
+        result = await xano_get_api_group("xnwv-v1z6-dvnr", "5", "10")
+        ```
+    """
+    log_debug(f"Called xano_get_api_group(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}")
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}"
+    log_debug(f"Getting API group details from URL: {url}")
+    return await make_api_request(url, headers)
+
+
+@mcp.tool()
+async def xano_create_api_group(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    name: str,
+    description: str = "",
+    docs: str = "",
+    branch: str = None,
+    swagger: bool = True,
+    tag: List[str] = None
+) -> Dict[str, Any]:
+    """
+    Create a new API group in a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        name: The name of the new API group
+        description: API group description
+        docs: Documentation text
+        branch: Branch to create the API group in (defaults to current branch)
+        swagger: Whether to enable Swagger documentation
+        tag: List of tags for the API group
+        
+    Returns:
+        A dictionary containing details about the newly created API group
+        
+    Example:
+        ```
+        # Create a simple API group
+        result = await xano_create_api_group(
+            "xnwv-v1z6-dvnr", 5, 
+            name="Authentication APIs"
+        )
+        
+        # Create an API group with additional details
+        result = await xano_create_api_group(
+            "xnwv-v1z6-dvnr", "5",
+            name="User Management",
+            description="APIs for user management operations",
+            docs="Use these endpoints to create, update, and delete users",
+            branch="development",
+            tag=["auth", "users"]
+        )
+        ```
+    """
+    log_debug(f"Called xano_create_api_group(instance_name={instance_name}, workspace_id={workspace_id}, name={name})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format the workspace_id to ensure it's a proper string
+    workspace_id = format_id(workspace_id)
+    log_debug(f"Formatted workspace_id: {workspace_id}")
+
+    # Prepare the API group creation data
+    data = {
+        "name": name,
+        "description": description,
+        "docs": docs,
+        "swagger": swagger
+    }
+    
+    if branch:
+        data["branch"] = branch
+        
+    if tag:
+        data["tag"] = tag
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup"
+    log_debug(f"Creating API group at URL: {url}")
+    return await make_api_request(url, headers, method="POST", data=data)
+
+
+@mcp.tool()
+async def xano_update_api_group(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int],
+    name: str = None,
+    description: str = None,
+    docs: str = None,
+    swagger: bool = None,
+    tag: List[str] = None
+) -> Dict[str, Any]:
+    """
+    Update an existing API group in a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group to update (can be provided as string or number)
+        name: The new name of the API group
+        description: New API group description
+        docs: New documentation text
+        swagger: Whether to enable Swagger documentation
+        tag: New list of tags for the API group
+        
+    Returns:
+        A dictionary containing details about the updated API group
+        
+    Example:
+        ```
+        # Update the name of an API group
+        result = await xano_update_api_group(
+            "xnwv-v1z6-dvnr", 5, 10,
+            name="Updated API Group Name"
+        )
+        
+        # Update multiple properties
+        result = await xano_update_api_group(
+            "xnwv-v1z6-dvnr", "5", "10",
+            description="Updated description",
+            docs="New documentation",
+            tag=["updated", "api"]
+        )
+        ```
+    """
+    log_debug(f"Called xano_update_api_group(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}")
+
+    # Build the update data, only including fields that are provided
+    data = {}
+    if name is not None:
+        data["name"] = name
+    if description is not None:
+        data["description"] = description
+    if docs is not None:
+        data["docs"] = docs
+    if swagger is not None:
+        data["swagger"] = swagger
+    if tag is not None:
+        data["tag"] = tag
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}"
+    log_debug(f"Updating API group at URL: {url}")
+    return await make_api_request(url, headers, method="PUT", data=data)
+
+
+@mcp.tool()
+async def xano_delete_api_group(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    Delete an API group from a workspace.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group to delete (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing the result of the delete operation
+        
+    Example:
+        ```
+        # Both formats work:
+        result = await xano_delete_api_group("xnwv-v1z6-dvnr", 5, 10)
+        result = await xano_delete_api_group("xnwv-v1z6-dvnr", "5", "10")
+        ```
+    """
+    log_debug(f"Called xano_delete_api_group(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}")
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}"
+    log_debug(f"Deleting API group at URL: {url}")
+    return await make_api_request(url, headers, method="DELETE")
+
+
+@mcp.tool()
+async def xano_update_api_group_security(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int],
+    guid: str,
+    canonical: str
+) -> Dict[str, Any]:
+    """
+    Update the security settings for an API group.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group (can be provided as string or number)
+        guid: The new GUID for the API group
+        canonical: The canonical URL for the API group
+        
+    Returns:
+        A dictionary containing the updated API group details
+        
+    Example:
+        ```
+        # Update security settings
+        result = await xano_update_api_group_security(
+            "xnwv-v1z6-dvnr", 5, 10,
+            guid="new-guid-value",
+            canonical="https://api.example.com/v1"
+        )
+        ```
+    """
+    log_debug(f"Called xano_update_api_group_security(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}")
+
+    # Prepare the security settings data
+    data = {
+        "guid": guid,
+        "canonical": canonical
+    }
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}/security"
+    log_debug(f"Updating API group security settings at URL: {url}")
+    return await make_api_request(url, headers, method="PUT", data=data)
+
+
+@mcp.tool()
+async def xano_browse_apis_in_group(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int],
+    page: int = 1,
+    per_page: int = 50,
+    search: str = None,
+    sort: str = None,
+    order: str = "desc"
+) -> Dict[str, Any]:
+    """
+    Browse APIs within a specific API group.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group (can be provided as string or number)
+        page: Page number (default: 1)
+        per_page: Number of APIs per page (default: 50)
+        search: Search term for filtering APIs
+        sort: Field to sort by ("created_at", "updated_at", "name")
+        order: Sort order ("asc" or "desc")
+        
+    Returns:
+        A dictionary containing a list of APIs and pagination information
+        
+    Example:
+        ```
+        # List all APIs in a group
+        result = await xano_browse_apis_in_group("xnwv-v1z6-dvnr", 5, 10)
+        
+        # Search for APIs with sorting
+        result = await xano_browse_apis_in_group(
+            "xnwv-v1z6-dvnr", "5", "10",
+            search="user",
+            sort="name",
+            order="asc",
+            page=2,
+            per_page=25
+        )
+        ```
+    """
+    log_debug(f"Called xano_browse_apis_in_group(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id}, page={page}, per_page={per_page})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}")
+
+    # Prepare params
+    params = {"page": page, "per_page": per_page}
+    
+    if search:
+        params["search"] = search
+    
+    if sort:
+        params["sort"] = sort
+        params["order"] = order
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}/api"
+    log_debug(f"Browsing APIs in group from URL: {url}")
+    return await make_api_request(url, headers, params=params)
+
+
+@mcp.tool()
+async def xano_get_api(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int],
+    api_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    Get details for a specific API.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group (can be provided as string or number)
+        api_id: The ID of the API (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing details about the specified API
+        
+    Example:
+        ```
+        # All of these formats work:
+        result = await xano_get_api("xnwv-v1z6-dvnr", 5, 10, 15)
+        result = await xano_get_api("xnwv-v1z6-dvnr", "5", "10", "15")
+        ```
+    """
+    log_debug(f"Called xano_get_api(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id}, api_id={api_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    api_id = format_id(api_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}, api_id: {api_id}")
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}/api/{api_id}"
+    log_debug(f"Getting API details from URL: {url}")
+    return await make_api_request(url, headers)
+
+
+@mcp.tool()
+async def xano_create_api(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int],
+    name: str,
+    description: str = "",
+    docs: str = "",
+    verb: str = "GET",
+    tag: List[str] = None
+) -> Dict[str, Any]:
+    """
+    Create a new API within an API group.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group (can be provided as string or number)
+        name: The name of the new API
+        description: API description
+        docs: Documentation text
+        verb: HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD)
+        tag: List of tags for the API
+        
+    Returns:
+        A dictionary containing details about the newly created API
+        
+    Example:
+        ```
+        # Create a GET API
+        result = await xano_create_api(
+            "xnwv-v1z6-dvnr", 5, 10,
+            name="Get User Profile",
+            verb="GET"
+        )
+        
+        # Create a POST API with more details
+        result = await xano_create_api(
+            "xnwv-v1z6-dvnr", "5", "10",
+            name="Create User",
+            description="Creates a new user in the system",
+            docs="Use this endpoint to register new users",
+            verb="POST",
+            tag=["users", "auth"]
+        )
+        ```
+    """
+    log_debug(f"Called xano_create_api(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id}, name={name}, verb={verb})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}")
+
+    # Prepare the API creation data
+    data = {
+        "name": name,
+        "description": description,
+        "docs": docs,
+        "verb": verb
+    }
+    
+    if tag:
+        data["tag"] = tag
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}/api"
+    log_debug(f"Creating API at URL: {url}")
+    return await make_api_request(url, headers, method="POST", data=data)
+
+
+@mcp.tool()
+async def xano_update_api(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int],
+    api_id: Union[str, int],
+    name: str = None,
+    description: str = None,
+    docs: str = None,
+    verb: str = None,
+    auth: Dict[str, Any] = None,
+    tag: List[str] = None,
+    cache: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """
+    Update an existing API.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group (can be provided as string or number)
+        api_id: The ID of the API to update (can be provided as string or number)
+        name: The new name of the API
+        description: New API description
+        docs: New documentation text
+        verb: New HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD)
+        auth: Authentication settings
+        tag: New list of tags for the API
+        cache: Cache settings
+        
+    Returns:
+        A dictionary containing the result of the update operation
+        
+    Example:
+        ```
+        # Update the name of an API
+        result = await xano_update_api(
+            "xnwv-v1z6-dvnr", 5, 10, 15,
+            name="Updated API Name"
+        )
+        
+        # Update multiple properties
+        result = await xano_update_api(
+            "xnwv-v1z6-dvnr", "5", "10", "15",
+            description="Updated description",
+            docs="New documentation",
+            verb="PUT",
+            tag=["updated", "api"],
+            cache={"active": True, "ttl": 300}
+        )
+        ```
+    """
+    log_debug(f"Called xano_update_api(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id}, api_id={api_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    api_id = format_id(api_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}, api_id: {api_id}")
+
+    # Build the update data, only including fields that are provided
+    data = {}
+    if name is not None:
+        data["name"] = name
+    if description is not None:
+        data["description"] = description
+    if docs is not None:
+        data["docs"] = docs
+    if verb is not None:
+        data["verb"] = verb
+    if auth is not None:
+        data["auth"] = auth
+    if tag is not None:
+        data["tag"] = tag
+    if cache is not None:
+        data["cache"] = cache
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}/api/{api_id}"
+    log_debug(f"Updating API at URL: {url}")
+    return await make_api_request(url, headers, method="PUT", data=data)
+
+
+@mcp.tool()
+async def xano_delete_api(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int],
+    api_id: Union[str, int]
+) -> Dict[str, Any]:
+    """
+    Delete an API from an API group.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group (can be provided as string or number)
+        api_id: The ID of the API to delete (can be provided as string or number)
+        
+    Returns:
+        A dictionary containing the result of the delete operation
+        
+    Example:
+        ```
+        # All formats work:
+        result = await xano_delete_api("xnwv-v1z6-dvnr", 5, 10, 15)
+        result = await xano_delete_api("xnwv-v1z6-dvnr", "5", "10", "15")
+        ```
+    """
+    log_debug(f"Called xano_delete_api(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id}, api_id={api_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    api_id = format_id(api_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}, api_id: {api_id}")
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}/api/{api_id}"
+    log_debug(f"Deleting API at URL: {url}")
+    return await make_api_request(url, headers, method="DELETE")
+
+
+@mcp.tool()
+async def xano_update_api_security(
+    instance_name: str,
+    workspace_id: Union[str, int],
+    apigroup_id: Union[str, int],
+    api_id: Union[str, int],
+    guid: str
+) -> Dict[str, Any]:
+    """
+    Update the security settings for an API.
+
+    Args:
+        instance_name: The name of the Xano instance (e.g., "xnwv-v1z6-dvnr")
+        workspace_id: The ID of the workspace (can be provided as string or number)
+        apigroup_id: The ID of the API group (can be provided as string or number)
+        api_id: The ID of the API (can be provided as string or number)
+        guid: The new GUID for the API
+        
+    Returns:
+        A dictionary containing the result of the update operation
+        
+    Example:
+        ```
+        # Update API security settings
+        result = await xano_update_api_security(
+            "xnwv-v1z6-dvnr", 5, 10, 15,
+            guid="new-api-guid-value"
+        )
+        ```
+    """
+    log_debug(f"Called xano_update_api_security(instance_name={instance_name}, workspace_id={workspace_id}, apigroup_id={apigroup_id}, api_id={api_id})")
+    token = get_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    instance_domain = f"{instance_name}.n7c.xano.io"
+    meta_api = f"https://{instance_domain}/api:meta"
+
+    # Format IDs to ensure they're proper strings
+    workspace_id = format_id(workspace_id)
+    apigroup_id = format_id(apigroup_id)
+    api_id = format_id(api_id)
+    
+    log_debug(f"Formatted workspace_id: {workspace_id}, apigroup_id: {apigroup_id}, api_id: {api_id}")
+
+    # Prepare the security settings data
+    data = {"guid": guid}
+
+    url = f"{meta_api}/workspace/{workspace_id}/apigroup/{apigroup_id}/api/{api_id}/security"
+    log_debug(f"Updating API security settings at URL: {url}")
+    return await make_api_request(url, headers, method="PUT", data=data)
+
 if __name__ == "__main__":
     log_debug("Starting Xano MCP server using MCP SDK...")
     try:
