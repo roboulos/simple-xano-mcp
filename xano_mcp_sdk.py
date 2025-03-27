@@ -163,20 +163,43 @@ async def xano_list_instances() -> Dict[str, Any]:
         log_debug(f"Successfully retrieved {len(result['instances'])} instances")
         return {"instances": result["instances"]}
 
-    # If that doesn't work, perform a workaround - list any known instances
-    # This is a fallback for when the API doesn't return instances directly
-    log_debug("Falling back to hardcoded instance detection...")
-    instances = [
-        {
-            "name": "xnwv-v1z6-dvnr",
-            "display": "Robert",
-            "xano_domain": "xnwv-v1z6-dvnr.n7c.xano.io",
-            "rate_limit": False,
-            "meta_api": "https://xnwv-v1z6-dvnr.n7c.xano.io/api:meta",
-            "meta_swagger": "https://xnwv-v1z6-dvnr.n7c.xano.io/apispec:meta?type=json",
-        }
-    ]
-    return {"instances": instances}
+    # If that doesn't work, attempt to discover instances via a different endpoint
+    log_debug("Primary endpoint failed, attempting alternative instance discovery...")
+    
+    # Try to get instances through workspace listing (may return limited data but better than hardcoding)
+    try:
+        workspaces_result = await make_api_request(f"{XANO_GLOBAL_API}/workspace", headers)
+        
+        if "error" not in workspaces_result and isinstance(workspaces_result, list):
+            # Extract instance information from workspaces data
+            discovered_instances = []
+            seen_instances = set()
+            
+            for workspace in workspaces_result:
+                if "instance" in workspace and workspace["instance"] not in seen_instances:
+                    instance_name = workspace["instance"]
+                    seen_instances.add(instance_name)
+                    
+                    # Construct instance details dynamically
+                    instance_domain = f"{instance_name}.n7c.xano.io"
+                    discovered_instances.append({
+                        "name": instance_name,
+                        "display": instance_name.split("-")[0].upper(),
+                        "xano_domain": instance_domain,
+                        "rate_limit": False,
+                        "meta_api": f"https://{instance_domain}/api:meta",
+                        "meta_swagger": f"https://{instance_domain}/apispec:meta?type=json"
+                    })
+            
+            if discovered_instances:
+                log_debug(f"Successfully discovered {len(discovered_instances)} instances via workspaces")
+                return {"instances": discovered_instances}
+    except Exception as e:
+        log_debug(f"Alternative instance discovery failed: {str(e)}")
+    
+    # If all attempts fail, return an empty list instead of hardcoded values
+    log_debug("All instance discovery methods failed, returning empty list")
+    return {"instances": [], "error": "Could not retrieve instance information. Please provide instance details directly."}
 
 
 @mcp.tool()
