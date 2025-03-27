@@ -156,51 +156,52 @@ async def xano_list_instances() -> Dict[str, Any]:
         "Accept": "application/json",
     }
 
-    # First try the direct auth/me endpoint
-    result = await make_api_request(f"{XANO_GLOBAL_API}/auth/me", headers)
+    # Use the correct Xano metadata endpoint for listing all instances
+    log_debug("Retrieving instances using the Xano Meta API: /instance endpoint")
+    url = f"{XANO_GLOBAL_API}/instance"
+    result = await make_api_request(url, headers)
 
-    if "error" not in result and "instances" in result:
-        log_debug(f"Successfully retrieved {len(result['instances'])} instances")
-        return {"instances": result["instances"]}
-
-    # If that doesn't work, attempt to discover instances via a different endpoint
-    log_debug("Primary endpoint failed, attempting alternative instance discovery...")
+    if "error" not in result and isinstance(result, list):
+        log_debug(f"Successfully retrieved {len(result)} instances")
+        return {"instances": result}
+    else:
+        log_debug(f"Failed to retrieve instances from /instance endpoint: {result.get('error', 'Unknown error')}")
     
-    # Try to get instances through workspace listing (may return limited data but better than hardcoding)
-    try:
-        workspaces_result = await make_api_request(f"{XANO_GLOBAL_API}/workspace", headers)
+    # If direct method failed, check if instance name is specified in environment or arguments
+    log_debug("Checking for direct instance specification...")
+    
+    # Check environment variable
+    instance_name = os.environ.get("XANO_INSTANCE")
+    if instance_name:
+        log_debug(f"Found instance name in environment variable: {instance_name}")
+        # Get details for the specific instance using the /instance/{name} endpoint
+        instance_url = f"{XANO_GLOBAL_API}/instance/{instance_name}"
+        instance_result = await make_api_request(instance_url, headers)
         
-        if "error" not in workspaces_result and isinstance(workspaces_result, list):
-            # Extract instance information from workspaces data
-            discovered_instances = []
-            seen_instances = set()
-            
-            for workspace in workspaces_result:
-                if "instance" in workspace and workspace["instance"] not in seen_instances:
-                    instance_name = workspace["instance"]
-                    seen_instances.add(instance_name)
-                    
-                    # Construct instance details dynamically
-                    instance_domain = f"{instance_name}.n7c.xano.io"
-                    discovered_instances.append({
-                        "name": instance_name,
-                        "display": instance_name.split("-")[0].upper(),
-                        "xano_domain": instance_domain,
-                        "rate_limit": False,
-                        "meta_api": f"https://{instance_domain}/api:meta",
-                        "meta_swagger": f"https://{instance_domain}/apispec:meta?type=json"
-                    })
-            
-            if discovered_instances:
-                log_debug(f"Successfully discovered {len(discovered_instances)} instances via workspaces")
-                return {"instances": discovered_instances}
-    except Exception as e:
-        log_debug(f"Alternative instance discovery failed: {str(e)}")
+        if "error" not in instance_result:
+            log_debug(f"Successfully retrieved instance details for {instance_name}")
+            return {"instances": [instance_result]}
     
-    # If all attempts fail, return an empty list instead of hardcoded values
-    log_debug("All instance discovery methods failed, returning empty list")
-    return {"instances": [], "error": "Could not retrieve instance information. Please provide instance details directly."}
-
+    # Check command line arguments
+    for i, arg in enumerate(sys.argv):
+        if arg == "--instance" and i + 1 < len(sys.argv):
+            instance_name = sys.argv[i + 1]
+            log_debug(f"Found instance name in command line arguments: {instance_name}")
+            
+            # Get details for the specific instance
+            instance_url = f"{XANO_GLOBAL_API}/instance/{instance_name}"
+            instance_result = await make_api_request(instance_url, headers)
+            
+            if "error" not in instance_result:
+                log_debug(f"Successfully retrieved instance details for {instance_name}")
+                return {"instances": [instance_result]}
+    
+    # If we still don't have any instances, provide a clear error
+    log_debug("No instances found through any discovery method")
+    return {
+        "instances": [], 
+        "error": "Could not discover any Xano instances. Please provide an instance name using --instance parameter or XANO_INSTANCE environment variable."
+    }
 
 @mcp.tool()
 async def xano_get_instance_details(instance_name: str) -> Dict[str, Any]:
