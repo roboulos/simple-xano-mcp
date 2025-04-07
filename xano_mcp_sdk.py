@@ -6,7 +6,6 @@ Xano MCP Server - Improved version with better error handling and parameter flex
 import os
 import sys
 import json
-import ssl
 import httpx
 from typing import Dict, List, Any, Union, Optional
 from mcp.server.fastmcp import FastMCP
@@ -58,66 +57,6 @@ def get_token():
     print("Please set XANO_API_TOKEN environment variable or use --token argument", file=sys.stderr, flush=True)
     return "missing_token"  # Return a placeholder instead of exiting
 
-# Create an unverified SSL context globally
-try:
-    ssl_context = ssl.create_unverified_context()
-except AttributeError:
-    # Fallback for older Python versions
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-
-async def make_api_request(
-    url, headers, method="GET", data=None, params=None, files=None
-):
-    """Helper function to make API requests with flexible SSL handling"""
-    try:
-        log_debug(f"Making {method} request to {url}")
-        
-        # Use the custom SSL context and disable verification
-        async with httpx.AsyncClient(verify=False, ssl=ssl_context) as client:
-            if params:
-                log_debug(f"With params: {params}")
-            if data and not files:
-                log_debug(f"With data: {json.dumps(data)[:500]}...")
-
-            if method == "GET":
-                response = await client.get(url, headers=headers, params=params)
-            elif method == "POST":
-                if files:
-                    response = await client.post(url, headers=headers, data=data, files=files)
-                else:
-                    response = await client.post(url, headers=headers, json=data)
-            elif method == "PUT":
-                response = await client.put(url, headers=headers, json=data)
-            elif method == "DELETE":
-                if data:
-                    response = await client.delete(url, headers=headers, json=data)
-                else:
-                    response = await client.delete(url, headers=headers)
-            elif method == "PATCH":
-                response = await client.patch(url, headers=headers, json=data)
-            else:
-                raise ValueError(f"Unsupported method: {method}")
-
-            log_debug(f"Response status: {response.status_code}")
-
-            if response.status_code == 200:
-                try:
-                    return response.json()
-                except json.JSONDecodeError:
-                    log_debug(f"Error parsing JSON response: {response.text[:200]}...")
-                    return {"error": "Failed to parse response as JSON"}
-            else:
-                log_debug(f"Error response: {response.text[:200]}...")
-                return {
-                    "error": f"API request failed with status {response.status_code}",
-                    "details": response.text[:500]
-                }
-    except Exception as e:
-        log_debug(f"Exception during API request: {str(e)}")
-        return {"error": f"Exception during API request: {str(e)}"}
-'''
 # Utility function to make API requests
 async def make_api_request(
     url, headers, method="GET", data=None, params=None, files=None
@@ -170,7 +109,7 @@ async def make_api_request(
     except Exception as e:
         log_debug(f"Exception during API request: {str(e)}")
         return {"error": f"Exception during API request: {str(e)}"}
-'''
+
 # Improved utility function to ensure IDs are properly formatted as strings
 def format_id(id_value):
     """
