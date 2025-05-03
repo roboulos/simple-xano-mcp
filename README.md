@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/roboulos-simple-xano-mcp-badge.png)](https://mseep.ai/app/roboulos-simple-xano-mcp)
+
 # Xano MCP Server
 
 This is a simplified Model Context Protocol (MCP) server for Xano database integration. It allows Claude to interact with Xano databases through the Xano Metadata API.
