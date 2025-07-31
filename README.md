@@ -1,5 +1,7 @@
 # Xano MCP Python SDK
 
+[![smithery badge](https://smithery.ai/badge/@roboulos/simple-xano-mcp)](https://smithery.ai/server/@roboulos/simple-xano-mcp)
+
 A Python-based MCP (Model Context Protocol) server for Xano that allows AI assistants like Claude to interact directly with your Xano instance. This is a standalone version optimized for local use with Claude Desktop and other MCP-compatible LLMs.
 
 ## 🌟 Features
@@ -12,6 +14,15 @@ A Python-based MCP (Model Context Protocol) server for Xano that allows AI assis
 
 ## 🚀 Quick Start
 
+### Installing via Smithery
+
+To install Xano MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@roboulos/simple-xano-mcp):
+
+```bash
+npx -y @smithery/cli install @roboulos/simple-xano-mcp --client claude
+```
+
+### Manual Installation
 1. **Clone this repository**:
    ```bash
    git clone https://github.com/yourusername/xano-mcp-python.git
